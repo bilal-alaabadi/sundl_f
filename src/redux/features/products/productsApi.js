@@ -1,3 +1,4 @@
+// ========================= redux/features/products/productsApi.js =========================
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { getBaseUrl } from "../../../utils/baseURL";
 
@@ -10,32 +11,37 @@ const productsApi = createApi({
   tagTypes: ["Product", "ProductList"],
   endpoints: (builder) => ({
     // جلب جميع المنتجات مع إمكانية التصفية والترتيب
-    fetchAllProducts: builder.query({
-      query: ({
-        category,
-        gender,
-        minPrice,
-        maxPrice,
-        search,
-        sort = "createdAt:desc",
-        page = 1,
-        limit = 10,
-      }) => {
-        const params = {
-          page: page.toString(),
-          limit: limit.toString(),
-          sort,
-        };
+fetchAllProducts: builder.query({
+  query: ({
+    category,
+    subcategory,   // ✅ أضفناه هنا
+    gender,
+    minPrice,
+    maxPrice,
+    search,
+    sort = "createdAt:desc",
+    page = 1,
+    limit = 10,
+  }) => {
+    const params = {
+      page: page.toString(),
+      limit: limit.toString(),
+      sort,
+    };
 
-        if (category && category !== "الكل") params.category = category;
-        if (gender) params.gender = gender;
-        if (minPrice) params.minPrice = minPrice;
-        if (maxPrice) params.maxPrice = maxPrice;
-        if (search) params.search = search;
+    if (category && category !== "الكل") params.category = category;
 
-        const queryParams = new URLSearchParams(params).toString();
-        return `/?${queryParams}`;
-      },
+    // ✅ إرسال subcategory لو موجود
+    if (subcategory) params.subcategory = subcategory;
+
+    if (gender) params.gender = gender;
+    if (minPrice) params.minPrice = minPrice;
+    if (maxPrice) params.maxPrice = maxPrice;
+    if (search) params.search = search;
+
+    const queryParams = new URLSearchParams(params).toString();
+    return `/?${queryParams}`;
+  },
       transformResponse: (response) => ({
         products: response.products,
         totalPages: response.totalPages,
@@ -50,28 +56,30 @@ const productsApi = createApi({
           : ["ProductList"],
     }),
 
-fetchProductById: builder.query({
-  query: (id) => `/product/${id}`, // تغيير المسار هنا
-  transformResponse: (response) => {
-    if (!response?.product) {
-      throw new Error('المنتج غير موجود');
-    }
-    
-    const { product } = response;
-    return {
-      _id: product._id,
-      name: product.name,
-      category: product.category,
-      size: product.size || '',
-      price: product.price,
-      oldPrice: product.oldPrice || '',
-      description: product.description,
-      image: Array.isArray(product.image) ? product.image : [product.image],
-      author: product.author
-    };
-  },
-  providesTags: (result, error, id) => [{ type: "Product", id }],
-}),
+    fetchProductById: builder.query({
+      query: (id) => `/product/${id}`,
+      transformResponse: (response) => {
+        if (!response?.product) {
+          throw new Error("المنتج غير موجود");
+        }
+
+        const { product } = response;
+        return {
+          _id: product._id,
+          name: product.name,
+          category: product.category,
+          subcategory: product.subcategory || "",
+          size: product.size || "",
+          price: product.price,
+          oldPrice: product.oldPrice || "",
+          description: product.description,
+          image: Array.isArray(product.image) ? product.image : [product.image],
+          author: product.author,
+          stock: typeof product.stock === "number" ? product.stock : 0,
+        };
+      },
+      providesTags: (result, error, id) => [{ type: "Product", id }],
+    }),
 
     // جلب المنتجات المرتبطة (منتجات مشابهة)
     fetchRelatedProducts: builder.query({
@@ -122,11 +130,12 @@ fetchProductById: builder.query({
     searchProducts: builder.query({
       query: (searchTerm) => `/search?q=${searchTerm}`,
       transformResponse: (response) => {
-        return response.map(product => ({
+        return response.map((product) => ({
           ...product,
-          price: product.category === 'حناء بودر' 
-            ? product.price 
-            : product.regularPrice,
+          price:
+            product.category === "حناء بودر"
+              ? product.price
+              : product.regularPrice,
           images: Array.isArray(product.image) ? product.image : [product.image],
         }));
       },

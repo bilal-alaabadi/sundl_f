@@ -1,84 +1,95 @@
-// ========================= UpdateProduct.jsx =========================
-import React, { useState, useEffect } from 'react';
+// ========================= src/components/admin/updateProduct/UpdateProduct.jsx =========================
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useFetchProductByIdQuery, useUpdateProductMutation } from '../../../../redux/features/products/productsApi';
+import {
+  useFetchProductByIdQuery,
+  useUpdateProductMutation,
+} from '../../../../redux/features/products/productsApi';
 import { useSelector } from 'react-redux';
 import TextInput from '../addProduct/TextInput';
 import SelectInput from '../addProduct/SelectInput';
-// مهم: استورد كمبوننت "التعديل" وليس تبع الإضافة
+// ✅ استخدام نفس كمبوننت الصور الخاص بالكود الأول
 import UploadImage from '../manageProduct/UploadImag';
 
-const categories = [
+// الفئات فقط (النوع يعتمد عليها)
+const CATEGORY_OPTIONS = [
   { label: 'أختر منتج', value: '' },
-  { label: 'تفصيل العبايات', value: 'تفصيل العبايات' },
-  { label: 'الشيلات فرنسية', value: 'الشيلات فرنسية' },
-  { label: 'الشيلات سادة', value: 'الشيلات سادة' },
-  { label: 'العطور', value: 'العطور' },
-  { label: 'دريسات', value: 'دريسات' },
+  { label: 'العناية بالبشرة', value: 'العناية بالبشرة' },
+  { label: 'العناية بالشعر', value: 'العناية بالشعر' },
+  { label: 'العناية بالشفاه', value: 'العناية بالشفاه' },
+  { label: 'العطور والبخور', value: 'العطور والبخور' },
+  { label: 'إكسسوارات العناية', value: 'إكسسوارات العناية' },
 ];
 
-const sizes = [
-  { label: 'اختر الحجم', value: '' },
-  { label: '1 كيلو', value: '1 كيلو' },
-  { label: '500 جرام', value: '500 جرام' },
-];
+// نفس خريطة الأنواع من AddProduct
+const SUBCATEGORIES_MAP = {
+  'العناية بالبشرة': ['صوابين', 'مقشرات', 'تونر', 'ماسكات'],
+  'العناية بالشعر': ['شامبوهات', 'زيوت', 'أقنعة'],
+  'العناية بالشفاه': ['مرطب', 'محدد', 'مقشر'],
+  'العطور والبخور': [],
+  'إكسسوارات العناية': ['لوفة', 'فرش', 'أدوات'],
+};
 
 const UpdateProduct = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
 
-  const { data: productData, isLoading: isFetching, error: fetchError } = useFetchProductByIdQuery(id);
-  const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
+  const {
+    data: productData,
+    isLoading: isFetching,
+    error: fetchError,
+  } = useFetchProductByIdQuery(id);
+
+  const [updateProduct, { isLoading: isUpdating }] =
+    useUpdateProductMutation();
 
   const [product, setProduct] = useState({
     name: '',
     category: '',
-    size: '',
+    subcategory: '',
     price: '',
     oldPrice: '',
     description: '',
     image: [],
-    inStock: true, // الخيار الأول والثابت: المنتج متوفر
+    stock: '',
   });
 
-  const [showSizeField, setShowSizeField] = useState(false);
+  // ✅ نفس نظام الصور في الكود الأول
+  const [newImages, setNewImages] = useState([]);      // ملفات جديدة
+  const [keepImages, setKeepImages] = useState([]);    // الصور التي نبقي عليها
 
-  // الصور الجديدة (Files)
-  const [newImages, setNewImages] = useState([]);
-  // الصور التي سنبقيها من الصور الحالية (روابط)
-  const [keepImages, setKeepImages] = useState([]);
-
-  useEffect(() => {
-    if (!productData) return;
-
-    // بعض الـ APIs ترجع { product, reviews } — نتعامل مع الحالتين
-    const p = productData.product ? productData.product : productData;
-
-    const currentImages = Array.isArray(p?.image)
-      ? p.image
-      : p?.image
-      ? [p.image]
-      : [];
-
-    setProduct({
-      name: p?.name || '',
-      category: p?.category || '',
-      size: p?.size || '',
-      price: p?.price != null ? String(p.price) : '',
-      oldPrice: p?.oldPrice != null ? String(p.oldPrice) : '',
-      description: p?.description || '',
-      image: currentImages,
-      inStock: typeof p?.inStock === 'boolean' ? p.inStock : true, // افتراضي متوفر
-    });
-
-    setKeepImages(currentImages);
-    setShowSizeField(p?.category === 'حناء بودر');
-  }, [productData]);
-
-  useEffect(() => {
-    setShowSizeField(product.category === 'حناء بودر');
+  // الأنواع المتاحة بناءً على الفئة
+  const availableSubcategories = useMemo(() => {
+    return SUBCATEGORIES_MAP[product.category] || [];
   }, [product.category]);
+
+  // تحميل بيانات المنتج في الفورم
+  useEffect(() => {
+    if (productData) {
+      const currentImages = Array.isArray(productData.image)
+        ? productData.image
+        : productData.image
+        ? [productData.image]
+        : [];
+
+      setProduct({
+        name: productData.name || '',
+        category: productData.category || '',
+        subcategory: productData.subcategory || '',
+        price: productData.price != null ? String(productData.price) : '',
+        oldPrice:
+          productData.oldPrice != null ? String(productData.oldPrice) : '',
+        description: productData.description || '',
+        image: currentImages,
+        stock:
+          productData.stock != null ? String(productData.stock) : '',
+      });
+
+      // ✅ حفظ الصور الحالية في keepImages مثل الكود الأول
+      setKeepImages(currentImages);
+    }
+  }, [productData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -89,64 +100,72 @@ const UpdateProduct = () => {
     e.preventDefault();
 
     const requiredFields = {
-      'أسم المنتج': product.name,
+      'اسم المنتج': product.name,
       'صنف المنتج': product.category,
       'السعر': product.price,
       'الوصف': product.description,
     };
 
-    if (product.category === 'حناء بودر' && !product.size) {
-      alert('الرجاء اختيار الحجم للحناء');
-      return;
-    }
+    const missing = Object.entries(requiredFields)
+      .filter(([_, v]) => !v)
+      .map(([k]) => k);
 
-    const missingFields = Object.entries(requiredFields)
-      .filter(([, value]) => !value)
-      .map(([field]) => field);
-
-    if (missingFields.length > 0) {
-      alert(`الرجاء ملء الحقول التالية: ${missingFields.join('، ')}`);
+    if (missing.length) {
+      alert(`الرجاء ملء الحقول التالية: ${missing.join('، ')}`);
       return;
     }
 
     try {
       const formData = new FormData();
+
       formData.append('name', product.name);
       formData.append('category', product.category);
+
+      // النوع اختياري → نرسله فقط لو اختاره المستخدم من القائمة
+      if (availableSubcategories.length > 0 && product.subcategory !== '') {
+        formData.append('subcategory', product.subcategory);
+      }
+
       formData.append('price', product.price);
       formData.append('oldPrice', product.oldPrice || '');
       formData.append('description', product.description);
-      formData.append('size', product.size || '');
+      formData.append('stock', product.stock || '0');
       formData.append('author', user?._id || '');
-      formData.append('inStock', product.inStock); // true = متوفر، false = انتهى المنتج
 
-      // الصور التي نُبقيها من القديمة
+      // ✅ استخدام keepImages مثل الكود الأول
       formData.append('keepImages', JSON.stringify(keepImages || []));
 
-      // الصور الجديدة
+      // ✅ الصور الجديدة مثل الكود الأول
       if (Array.isArray(newImages) && newImages.length > 0) {
         newImages.forEach((file) => formData.append('image', file));
       }
 
       await updateProduct({ id, body: formData }).unwrap();
+
       alert('تم تحديث المنتج بنجاح');
       navigate('/dashboard/manage-products');
     } catch (error) {
-      alert('حدث خطأ أثناء تحديث المنتج: ' + (error?.data?.message || error?.message || 'خطأ غير معروف'));
+      console.error(error);
+      alert('حدث خطأ أثناء التحديث');
     }
   };
 
-  if (isFetching) return <div className="text-center py-8">جاري تحميل بيانات المنتج...</div>;
-  if (fetchError) return <div className="text-center py-8 text-red-500">خطأ في تحميل بيانات المنتج</div>;
+  if (isFetching) return <div className="text-center py-8">جارٍ التحميل...</div>;
+  if (fetchError)
+    return (
+      <div className="text-center py-8 text-red-500">
+        خطأ في تحميل المنتج
+      </div>
+    );
 
   return (
-    <div className="container mx-auto mt-8 px-4">
-      <h2 className="text-2xl font-bold mb-6 text-right">تحديث المنتج</h2>
+    <div className="container mx-auto mt-8 px-4" dir="rtl">
+      <h2 className="text-2xl font-bold mb-6">تحديث المنتج</h2>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <TextInput
           label="اسم المنتج"
           name="name"
-          placeholder="أكتب اسم المنتج"
           value={product.name}
           onChange={handleChange}
           required
@@ -156,27 +175,32 @@ const UpdateProduct = () => {
           label="صنف المنتج"
           name="category"
           value={product.category}
+          options={CATEGORY_OPTIONS}
           onChange={handleChange}
-          options={categories}
           required
         />
 
-        {showSizeField && (
+        {/* النوع من قائمة جاهزة – اختياري */}
+        {availableSubcategories.length > 0 && (
           <SelectInput
-            label="حجم الحناء"
-            name="size"
-            value={product.size}
+            label="النوع (اختياري)"
+            name="subcategory"
+            value={product.subcategory}
             onChange={handleChange}
-            options={sizes}
-            required={product.category === 'حناء بودر'}
+            options={[
+              { label: 'أختر النوع', value: '' },
+              ...availableSubcategories.map((s) => ({
+                label: s,
+                value: s,
+              })),
+            ]}
           />
         )}
 
         <TextInput
-          label="السعر الحالي"
+          label="السعر"
           name="price"
           type="number"
-          placeholder="50"
           value={product.price}
           onChange={handleChange}
           required
@@ -186,70 +210,46 @@ const UpdateProduct = () => {
           label="السعر القديم (اختياري)"
           name="oldPrice"
           type="number"
-          placeholder="100"
           value={product.oldPrice}
           onChange={handleChange}
         />
 
-        {/* كمبوننت التعديل: يعرض صور حالية + يحذف + يجمع ملفات جديدة */}
+        <TextInput
+          label="الكمية بالمخزون"
+          name="stock"
+          type="number"
+          value={product.stock}
+          onChange={handleChange}
+        />
+
+        {/* ✅ نفس نظام الصور في الكود الأول */}
         <UploadImage
           name="image"
           id="image"
-          initialImages={product.image}   // صور حالية
-          setImages={setNewImages}        // ملفات جديدة
-          setKeepImages={setKeepImages}   // الصور التي سيتم الإبقاء عليها
+          initialImages={product.image}
+          setImages={setNewImages}
+          setKeepImages={setKeepImages}
         />
 
-        <div className="text-right">
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-            وصف المنتج
-          </label>
+        <div>
+          <label className="block mb-1 font-medium">وصف المنتج</label>
           <textarea
             name="description"
-            id="description"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
             value={product.description}
-            placeholder="أكتب وصف المنتج"
             onChange={handleChange}
-            required
+            className="w-full border rounded p-2"
             rows={4}
-          />
+            required
+          ></textarea>
         </div>
 
-        {/* خيارات حالة التوفر: الخيار الأول ثابت (متوفر) والثاني (انتهى المنتج) */}
-        <div className="flex items-center gap-6">
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="availability"
-              value="available"
-              checked={product.inStock === true}
-              onChange={() => setProduct((prev) => ({ ...prev, inStock: true }))}
-            />
-            <span>المنتج متوفر</span>
-          </label>
-
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="availability"
-              value="ended"
-              checked={product.inStock === false}
-              onChange={() => setProduct((prev) => ({ ...prev, inStock: false }))}
-            />
-            <span>انتهى المنتج</span>
-          </label>
-        </div>
-
-        <div className="flex justify-end pt-4">
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-            disabled={isUpdating}
-          >
-            {isUpdating ? 'جاري التحديث...' : 'حفظ التغييرات'}
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={isUpdating}
+          className="px-6 py-2 bg-blue-600 text-white rounded"
+        >
+          {isUpdating ? 'جاري التحديث...' : 'حفظ التغييرات'}
+        </button>
       </form>
     </div>
   );

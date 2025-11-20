@@ -1,3 +1,4 @@
+// src/pages/dashboard/products/addProduct/AddProduct.jsx
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import TextInput from './TextInput';
@@ -6,14 +7,24 @@ import UploadImage from './UploadImage';
 import { useAddProductMutation } from '../../../../redux/features/products/productsApi';
 import { useNavigate } from 'react-router-dom';
 
-const categories = [
+// ======================= الفئات والأنواع =======================
+const CATEGORY_OPTIONS = [
   { label: 'أختر منتج', value: '' },
-  { label: 'تفصيل العبايات', value: 'تفصيل العبايات' },
-  { label: 'الشيلات فرنسية', value: 'الشيلات فرنسية' },
-  { label: 'الشيلات سادة', value: 'الشيلات سادة' },
-  { label: 'العطور', value: 'العطور' },
-  { label: 'دريسات', value: 'دريسات' },
+  { label: 'العناية بالبشرة', value: 'العناية بالبشرة' },
+  { label: 'العناية بالشعر', value: 'العناية بالشعر' },
+  { label: 'العناية بالشفاه', value: 'العناية بالشفاه' },
+  { label: 'العطور والبخور', value: 'العطور والبخور' },
+  { label: 'إكسسوارات العناية', value: 'إكسسوارات العناية' },
 ];
+
+// خريطة الأنواع لكل فئة
+const SUBCATEGORIES_MAP = {
+  'العناية بالبشرة': ['صوابين', 'مقشرات', 'تونر', 'ماسكات'],
+  'العناية بالشعر': ['شامبوهات', 'زيوت', 'أقنعة'],
+  'العناية بالشفاه': ['مرطب', 'محدد', 'مقشر'],
+  'العطور والبخور': [],
+  'إكسسوارات العناية': ['لوفة', 'فرش', 'أدوات'],
+};
 
 const AddProduct = () => {
   const { user } = useSelector((state) => state.auth);
@@ -21,31 +32,33 @@ const AddProduct = () => {
   const [product, setProduct] = useState({
     name: '',
     category: '',
+    subcategory: '',   // ✅ النوع
     price: '',
-    description: '',
     oldPrice: '',
-    inStock: true, // متوفر افتراضياً
+    description: '',
+    stock: '',         // ✅ جديد: الكمية
   });
 
   const [image, setImage] = useState([]);
-
-  const [addProduct, { isLoading }] = useAddProductMutation();
+  const [AddProductReq, { isLoading }] = useAddProductMutation();
   const navigate = useNavigate();
 
+  // الأنواع المتاحة حسب الفئة المختارة
+  const availableSubcategories = SUBCATEGORIES_MAP[product.category] || [];
+
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    if (name === 'ended' && type === 'checkbox') {
-      // إذا تم التأشير على "هل انتهى المنتج؟" = نعم → inStock = false
-      setProduct((prev) => ({ ...prev, inStock: !checked }));
-    } else {
-      setProduct((prev) => ({ ...prev, [name]: value }));
-    }
+    const { name, value } = e.target;
+    setProduct({
+      ...product,
+      [name]: value,
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const required = {
+    // التحقق من الحقول المطلوبة (نفس السابق، لم نضف stock كحقل إجباري)
+    const requiredFields = {
       'أسم المنتج': product.name,
       'صنف المنتج': product.category,
       'السعر': product.price,
@@ -53,35 +66,44 @@ const AddProduct = () => {
       'الصور': image.length > 0,
     };
 
-    const missing = Object.entries(required)
-      .filter(([, v]) => !v)
-      .map(([k]) => k);
+    const missingFields = Object.entries(requiredFields)
+      .filter(([_, value]) => !value)
+      .map(([field]) => field);
 
-    if (missing.length) {
-      alert(`الرجاء ملء الحقول التالية: ${missing.join('، ')}`);
+    if (missingFields.length > 0) {
+      alert(`الرجاء ملء الحقول التالية: ${missingFields.join('، ')}`);
       return;
     }
 
     try {
-      await addProduct({
+      await AddProductReq({
         ...product,
+        stock: product.stock, // ✅ إرسال الكمية للباك
         image,
         author: user?._id,
       }).unwrap();
 
-      alert('تمت أضافة المنتج بنجاح');
-      setProduct({ name: '', category: '', oldPrice: '', price: '', description: '', inStock: true });
+      alert('تمت إضافة المنتج بنجاح');
+      setProduct({
+        name: '',
+        category: '',
+        subcategory: '',
+        oldPrice: '',
+        price: '',
+        description: '',
+        stock: '', // ✅ تصفير الكمية بعد الإضافة
+      });
       setImage([]);
       navigate('/shop');
-    } catch (err) {
-      console.error('Failed to submit product', err);
+    } catch (error) {
+      console.log('Failed to submit product', error);
       alert('حدث خطأ أثناء إضافة المنتج');
     }
   };
 
   return (
     <div className="container mx-auto mt-8">
-      <h2 className="text-2xl font-bold mb-6">أضافة منتج جديد</h2>
+      <h2 className="text-2xl font-bold mb-6">إضافة منتج جديد</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <TextInput
           label="أسم المنتج"
@@ -96,8 +118,24 @@ const AddProduct = () => {
           name="category"
           value={product.category}
           onChange={handleChange}
-          options={categories}
+          options={CATEGORY_OPTIONS}
         />
+
+        {availableSubcategories.length > 0 && (
+          <SelectInput
+            label="النوع"
+            name="subcategory"
+            value={product.subcategory}
+            onChange={handleChange}
+            options={[
+              { label: 'أختر النوع', value: '' },
+              ...availableSubcategories.map((sub) => ({
+                label: sub,
+                value: sub,
+              })),
+            ]}
+          />
+        )}
 
         <TextInput
           label="السعر القديم (اختياري)"
@@ -117,17 +155,15 @@ const AddProduct = () => {
           onChange={handleChange}
         />
 
-        {/* هل انتهى المنتج؟ (إذا تم التأشير = لا يمكن إضافته للسلة) */}
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="ended"
-            name="ended"
-            checked={!product.inStock}
-            onChange={handleChange}
-          />
-          <label htmlFor="ended">هل انتهى المنتج؟</label>
-        </div>
+        {/* ✅ خانة كمية المنتج */}
+        <TextInput
+          label="الكمية في المخزون"
+          name="stock"
+          type="number"
+          placeholder="مثال: 10"
+          value={product.stock}
+          onChange={handleChange}
+        />
 
         <UploadImage
           name="image"
@@ -135,9 +171,11 @@ const AddProduct = () => {
           uploaded={image}
           setImage={setImage}
         />
-
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="description"
+            className="block text-sm font-medium text-gray-700"
+          >
             وصف المنتج
           </label>
           <textarea
@@ -148,11 +186,15 @@ const AddProduct = () => {
             placeholder="اكتب وصف المنتج"
             onChange={handleChange}
             rows={4}
-          />
+          ></textarea>
         </div>
 
         <div>
-          <button type="submit" className="add-product-btn" disabled={isLoading}>
+          <button
+            type="submit"
+            className="add-product-btn"
+            disabled={isLoading}
+          >
             {isLoading ? 'جاري الإضافة...' : 'أضف منتج'}
           </button>
         </div>
