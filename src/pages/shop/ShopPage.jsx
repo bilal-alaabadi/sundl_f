@@ -5,16 +5,54 @@ import ShopFiltering from './ShopFiltering';
 import { useFetchAllProductsQuery } from '../../redux/features/products/productsApi';
 import imge from "../../assets/تصميم-بنر-للمتجر.png-02.png";
 
-// ✅ خريطة الأنواع (نفسها من إضافة المنتجات)
+// خريطة الأنواع
 const SUBCATEGORIES_MAP = {
-  'العناية بالبشرة': ['صوابين', 'مقشرات', 'تونر', 'ماسكات'],
+  'العناية بالبشرة': [
+    'صوابين',
+    'مقشرات',
+    'تونر',
+    'ماسكات',
+    'كريمات الوجه',
+    'كريمات الجسم',
+    'كريمات اليد',
+    'سيرومات',
+  ],
   'العناية بالشعر': ['شامبوهات', 'زيوت', 'أقنعة'],
-  'العناية بالشفاه': ['مرطب', 'محدد', 'مقشر'],
+  'العناية بالشفاه': ['مرطب', 'محدد', 'مقشر', 'لماع'],
+  'المكياج': [
+    'برايمر',
+    'كريم أساس',
+    'بودرة مضغوطة',
+    'لوس بودر',
+    'جلوز',
+    'محدد الشفايف (بني فاتح، بني غامق، الأسود، الأحمر، الوردي الفاتح، الوردي الغامق، البنفسجي)',
+    'لماع',
+    'كونتور',
+    'ظل العيون',
+    'بلاشر',
+    'هايلايت',
+    'قلم الحواجب',
+    'كونسيلير',
+  ],
+  'الشنط': ['ميني', 'أحجام متوسطة', 'أحجام كبيرة'],
+  'الحنا': [
+    'ستيكرات الحنا تاتو',
+    'ستيكرات الحنا عاديه',
+    'حنا بهاونا او مزيونه',
+    'حنا السريع الاحمر او الماروني',
+  ],
+  'الأظافر': [
+    'ادوات الاظافر',
+    'اظافر اكتنشن',
+    'بودره اكريلك',
+    'جل بوليش',
+    'صبغ اظافر',
+  ],
+  'عدسات': [],
   'العطور والبخور': [],
   'إكسسوارات العناية': ['لوفة', 'فرش', 'أدوات'],
 };
 
-// ✅ قائمة الفئات
 const CATEGORIES = ['الكل', ...Object.keys(SUBCATEGORIES_MAP)];
 
 const ShopPage = () => {
@@ -33,7 +71,6 @@ const ShopPage = () => {
     setCurrentPage(1);
   }, [filtersState]);
 
-  // ✅ استدعاء الـ API مع الفلاتر الحالية
   const { data, error, isLoading } = useFetchAllProductsQuery({
     category: category !== 'الكل' ? category : undefined,
     subcategory: (category !== 'الكل' && subcategory) ? subcategory : undefined,
@@ -59,6 +96,7 @@ const ShopPage = () => {
     () => (currentPage - 1) * ProductsPerPage + 1,
     [currentPage, ProductsPerPage]
   );
+
   const endProduct = useMemo(
     () => Math.min(startProduct + ProductsPerPage - 1, totalProducts),
     [startProduct, totalProducts, ProductsPerPage]
@@ -69,6 +107,9 @@ const ShopPage = () => {
 
   return (
     <>
+      {/* ✅ Spacer خاص بالهاتف فقط لحل مشكلة الناف */}
+      <div className="h-14 md:hidden" />
+
       {/* Hero Section */}
       <section className="relative w-full h-64 md:h-80 lg:h-96 overflow-hidden">
         <img
@@ -84,19 +125,17 @@ const ShopPage = () => {
       </section>
 
       {/* Products Section */}
-      <section className='section__container py-8'>
-<div className="md:hidden mb-4 w-full">
-  <button
-    onClick={() => setShowFilters((s) => !s)}
-    className="w-full px-4 py-2 rounded-md bg-[#894361] text-white text-center"
-  >
-    {showFilters ? 'إخفاء الفلاتر' : 'عرض الفلاتر'}
-  </button>
-</div>
+      <section className="section__container py-8">
+        <div className="md:hidden mb-4 flex justify-end">
+          <button
+            onClick={() => setShowFilters((s) => !s)}
+            className="px-4 py-2 rounded-md bg-[#894361] text-white"
+          >
+            {showFilters ? 'إخفاء الفلاتر' : 'عرض الفلاتر'}
+          </button>
+        </div>
 
-
-        <div className='flex flex-col md:flex-row md:gap-8 gap-6'>
-          {/* Sidebar Filters */}
+        <div className="flex flex-col md:flex-row md:gap-8 gap-6">
           <aside className={`md:w-1/4 ${showFilters ? 'block' : 'hidden'} md:block`}>
             <div className="bg-white rounded-lg shadow-sm p-4">
               <ShopFiltering
@@ -108,51 +147,36 @@ const ShopPage = () => {
             </div>
           </aside>
 
-          {/* Products List */}
-          <div className='md:w-3/4'>
-            <div className='flex justify-between items-center mb-6'>
-              {/* <h3 className='text-lg font-medium text-gray-700'>
+          <div className="md:w-3/4">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-medium text-gray-700">
                 {totalProducts > 0
                   ? <>عرض {startProduct}-{endProduct} من {totalProducts} منتج</>
                   : 'لا توجد منتجات متاحة'}
-              </h3> */}
+              </h3>
             </div>
 
             {products.length > 0 ? (
               <>
                 <ProductCards products={products} />
 
-                {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className='mt-8 flex flex-col sm:flex-row items-center justify-between gap-4'>
+                  <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="text-sm text-gray-600">
                       الصفحة {currentPage} من {totalPages}
                     </div>
-                    <div className='flex gap-2'>
+                    <div className="flex gap-2">
                       <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className={`px-4 py-2 rounded-md ${currentPage === 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-[#9B2D1F] text-white hover:bg-[#7a241a]'}`}
+                        className="px-4 py-2 rounded-md bg-[#9B2D1F] text-white disabled:bg-gray-200 disabled:text-gray-500"
                       >
                         السابق
                       </button>
-
-                      <div className="flex gap-1">
-                        {[...Array(totalPages)].map((_, index) => (
-                          <button
-                            key={index}
-                            onClick={() => handlePageChange(index + 1)}
-                            className={`w-10 h-10 flex items-center justify-center rounded-md ${currentPage === index + 1 ? 'bg-[#9B2D1F] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                          >
-                            {index + 1}
-                          </button>
-                        ))}
-                      </div>
-
                       <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className={`px-4 py-2 rounded-md ${currentPage === totalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-[#9B2D1F] text-white hover:bg-[#7a241a]'}`}
+                        className="px-4 py-2 rounded-md bg-[#9B2D1F] text-white disabled:bg-gray-200 disabled:text-gray-500"
                       >
                         التالي
                       </button>
@@ -165,7 +189,7 @@ const ShopPage = () => {
                 <p className="text-lg text-gray-600">لا توجد منتجات متاحة حسب الفلتر المحدد</p>
                 <button
                   onClick={clearFilters}
-                  className="mt-4 px-4 py-2 bg-[#9B2D1F] text-white rounded-md hover:bg-[#7a241a]"
+                  className="mt-4 px-4 py-2 bg-[#9B2D1F] text-white rounded-md"
                 >
                   عرض جميع المنتجات
                 </button>
