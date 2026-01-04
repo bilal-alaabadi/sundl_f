@@ -6,12 +6,11 @@ import CartModal from '../pages/shop/CartModal';
 import avatarImg from "../assets/avatar.png";
 import { useLogoutUserMutation } from '../redux/features/auth/authApi';
 import { logout } from '../redux/features/auth/authSlice';
-import log from "../assets/ChatGPT Image Nov 20, 2025, 08_19_18 PM.png";
+import log from "../assets/Screenshot 2025-09-09 203952.png";
 import { setCountry } from '../redux/features/cart/cartSlice';
 
 const Navbar = () => {
   const products = useSelector((state) => state.cart.products);
-  const { country } = useSelector((state) => state.cart);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const { user } = useSelector((state) => state.auth);
   const [isDropDownOpen, setIsDropDownOpen] = useState(false);
