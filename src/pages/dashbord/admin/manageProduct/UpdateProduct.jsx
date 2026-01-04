@@ -7,7 +7,7 @@ import {
 import { useSelector } from 'react-redux';
 import TextInput from '../addProduct/TextInput';
 import SelectInput from '../addProduct/SelectInput';
-import UploadImage from '../manageProduct/UploadImag';
+import UploadImage from '../addProduct/UploadImage';
 
 const CATEGORY_OPTIONS = [
   { label: 'أختر منتج', value: '' },
