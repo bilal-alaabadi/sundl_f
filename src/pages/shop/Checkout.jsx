@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { RiBankCardLine } from "react-icons/ri";
 import { getBaseUrl } from "../../utils/baseURL";
 // ✅ عدّل المسار حسب مشروعك لو اختلف
-import { setCountry, clearGiftCard } from "../../redux/features/cart/cartSlice";
+import { setCountry } from "../../redux/features/cart/cartSlice";
 import Thw from "../../assets/images__4_-removebg-preview.png";
 
 const Checkout = () => {
@@ -27,19 +27,6 @@ const Checkout = () => {
 
   const currency = country === "دول الخليج" ? "د.إ" : "ر.ع.";
   const exchangeRate = country === "دول الخليج" ? 9.5 : 1; // للعرض فقط
-
-  // رسوم الشحن الأساسية (تُخزَّن وتُحسب دائماً بالريال العُماني)
-  const baseShippingFee = useMemo(() => {
-    if (country === "دول الخليج") {
-      // الإمارات = 4 ر.ع ، غيرها = 5 ر.ع
-      return gulfCountry === "الإمارات" ? 4 : 5;
-    }
-    // داخل عُمان بقيت 2 ر.ع كما كانت
-    return 2;
-  }, [country, gulfCountry]);
-
-  // بعد ذلك تُعرَض بحسب العملة المختارة (قد تُحوَّل إلى AED إن كانت دول الخليج)
-  const shippingFee = baseShippingFee * exchangeRate;
 
   // هل يوجد ضمن الطلب "تفصيل عباية"؟
   const hasTailoredAbaya = useMemo(() => {
@@ -150,8 +137,8 @@ const Checkout = () => {
 
   const displayTotal = useMemo(() => {
     if (payDepositEffective) return (10 * exchangeRate).toFixed(2); // 10 ر.ع تُحوَّل عند الحاجة
-    return ((totalPrice + baseShippingFee) * exchangeRate).toFixed(2);
-  }, [payDepositEffective, exchangeRate, totalPrice, baseShippingFee]);
+    return ((totalPrice) * exchangeRate).toFixed(2);
+  }, [payDepositEffective, exchangeRate, totalPrice]);
 
   const renderMeasurementsDetails = (m) => {
     if (!m) return null;
@@ -374,17 +361,6 @@ const Checkout = () => {
                   {!!giftCard.to && <p>إلى: {giftCard.to}</p>}
                   {!!giftCard.phone && <p>رقم المستلم: {giftCard.phone}</p>}
                   {!!giftCard.note && <p>ملاحظات: {giftCard.note}</p>}
-                </div>
-              )}
-
-              {/* رسوم الشحن تُخفى عند دفع المقدم */}
-              {!payDepositEffective && (
-                <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                  <span className="text-gray-800">رسوم الشحن</span>
-                  <p className="text-gray-900">
-                    {currency}
-                    {shippingFee.toFixed(2)}
-                  </p>
                 </div>
               )}
 
