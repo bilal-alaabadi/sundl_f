@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 
 const OrderSummary = ({ onClose }) => {
   const dispatch = useDispatch();
-  const { products = [], totalPrice = 0, shippingFee = 0, country } = useSelector(
+  const { products = [], totalPrice = 0, country } = useSelector(
     (s) => s.cart
   );
 
@@ -14,27 +14,12 @@ const OrderSummary = ({ onClose }) => {
   const currency = isAED ? 'د.إ' : 'ر.ع.';
   const exchangeRate = isAED ? 9.5 : 1;
 
-  const baseShippingFee =
-    country === 'دول الخليج' ? 5 : Number(shippingFee || 0);
-  const grandTotal = (Number(totalPrice) + Number(baseShippingFee)) * exchangeRate;
+  const grandTotal = Number(totalPrice) * exchangeRate;
 
   return (
     <div className="text-sm text-gray-800" dir="rtl">
       {/* المجاميع */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-gray-600">الإجمالي الفرعي</span>
-          <span className="font-medium">
-            {(Number(totalPrice) * exchangeRate).toFixed(2)} {currency}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-gray-600">الشحن</span>
-          <span className="font-medium">
-            {(Number(baseShippingFee) * exchangeRate).toFixed(2)} {currency}
-          </span>
-        </div>
-
         <div className="flex items-center justify-between pt-2 border-t">
           <span className="font-bold text-base">المجموع</span>
           <span className="font-extrabold text-base">
