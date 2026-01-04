@@ -1,15 +1,21 @@
-// ========================= PaymentSuccess.jsx (نهائي) =========================
-import React, { useEffect, useState } from 'react';
+// components/PaymentSuccess.jsx
+import React, { useEffect, useRef, useState } from 'react';
 import { getBaseUrl } from '../utils/baseURL';
-import { useDispatch, useSelector } from 'react-redux';
-import { clearCart } from '../redux/features/cart/cartSlice';
+import TimelineStep from './Timeline';
+
+// ✅ استيراد التفريغ من السلة
+import { useDispatch } from 'react-redux';
+import { clearCart } from '../redux/features/cart/cartSlice'; // عدّل المسار إن لزم
 
 const PaymentSuccess = () => {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState(null);
   const [products, setProducts] = useState([]);
+
   const dispatch = useDispatch();
-  const { selectedItems } = useSelector((state) => state.cart);
+
+  // ✅ لضمان عدم تكرار تفريغ السلة (React StrictMode وغيره)
+  const clearedRef = useRef(false);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -21,133 +27,57 @@ const PaymentSuccess = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ client_reference_id })
       })
-        .then((res) =>
-          res.ok ? res.json() : Promise.reject(new Error(`HTTP error! status: ${res.status}`))
-        )
+        .then((res) => res.ok ? res.json() : Promise.reject(`HTTP error! status: ${res.status}`))
         .then(async (data) => {
           if (data.error) throw new Error(data.error);
           if (!data.order) throw new Error("No order data received.");
 
-          if (data.order.status === 'completed' && selectedItems > 0) {
-            dispatch(clearCart());
-          }
-
           setOrder(data.order);
 
+          // جلب تفاصيل المنتجات المعروضة
           const productsDetails = await Promise.all(
-            (data.order.products || []).map(async (item) => {
-              let fetched = {};
-              try {
-                const response = await fetch(`${getBaseUrl()}/api/products/${item.productId}`);
-                if (response.ok) {
-                  const productData = await response.json();
-                  fetched = productData?.product || {};
-                }
-              } catch {}
-
-              // ✅ بطاقة هدية لكل منتج: نأخذ من العنصر نفسه، وإن لم توجد نستخدم بطاقة الطلب العامة
-              const gc = item.giftCard && (item.giftCard.from || item.giftCard.to || item.giftCard.phone || item.giftCard.note)
-                ? item.giftCard
-                : (data.order.giftCard && (data.order.giftCard.from || data.order.giftCard.to || data.order.giftCard.phone || data.order.giftCard.note)
-                    ? data.order.giftCard
-                    : null);
-
+            data.order.products.map(async (item) => {
+              const response = await fetch(`${getBaseUrl()}/api/products/${item.productId}`);
+              const productData = await response.json();
               return {
-                productId: item.productId,
-                name: item.name || fetched.name || 'منتج',
+                ...productData.product,
                 quantity: item.quantity,
-                measurements: item.measurements || {},
-                selectedSize: item.selectedSize,
-                category: item.category || fetched.category || '',
-                image: item.image || fetched.image || '',
-                description: fetched.description || '',
-                price: item.price ?? fetched.regularPrice ?? fetched.price ?? 0,
-                giftCard: gc, // <-- نرفقها مع كل عنصر
+                selectedSize: item.selectedSize
               };
             })
           );
-
           setProducts(productsDetails);
         })
         .catch((err) => {
           console.error("Error confirming payment", err);
-          setError(err.message || String(err));
+          setError(err.message);
         });
     } else {
       setError("No session ID found in the URL");
     }
-  }, [dispatch, selectedItems]);
+  }, []);
+
+  // ✅ عند نجاح الدفع: تفريغ السلة مرة واحدة فقط
+  useEffect(() => {
+    if (order?.status === 'completed' && !clearedRef.current) {
+      dispatch(clearCart());              // يحدّث الحالة ويحفظها في localStorage عبر reducer
+      clearedRef.current = true;          // منع التكرار
+      // لا حاجة لمسح localStorage يدويًا لأن clearCart يستدعي saveState داخل الـ slice
+    }
+  }, [order, dispatch]);
 
   const currency = order?.country === 'الإمارات' ? 'د.إ' : 'ر.ع.';
   const exchangeRate = order?.country === 'الإمارات' ? 9.5 : 1;
 
-  const formatPrice = (price) => (Number(price || 0) * exchangeRate).toFixed(2);
-
-  const renderMeasurements = (m) => {
-    if (!m || typeof m !== 'object') return null;
-    const entries = Object.entries(m).filter(([_, v]) => v !== '' && v !== null && v !== undefined);
-    if (entries.length === 0) return null;
-    return (
-      <div className="mt-3 text-sm rounded p-3">
-        <h5 className="font-semibold mb-2">القياسات / الخيارات:</h5>
-        <ul className="list-disc pr-5 space-y-1">
-          {entries.map(([key, val]) => (
-            <li key={key}>
-              <span className="font-medium">{key}:</span> <span>{String(val)}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  };
+  const formatPrice = (price) => (price * exchangeRate).toFixed(2);
 
   if (error) return <div className="text-red-500">خطأ: {error}</div>;
   if (!order) return <div>جارِ التحميل...</div>;
 
-  const isDeposit = !!order.depositMode;
-  const remaining = Number(order.remainingAmount || 0);
-  const hasGift = Boolean(
-    order?.giftCard &&
-    (order.giftCard.from || order.giftCard.to || order.giftCard.phone || order.giftCard.note)
-  );
-
   return (
-    <section className='section__container rounded p-6' dir="rtl">
-      <h2 className="text-2xl font-bold mb-2">
-        تم الدفع بنجاح
-        {hasGift && (
-          <span className="ml-2 inline-block text-sm font-semibold px-2 py-0.5 rounded bg-pink-100 text-pink-800 align-middle">
-            هدية 🎁
-          </span>
-        )}
-      </h2>
-      <p className="text-gray-600">رقم الطلب: {order.orderId}</p>
-      {order.paymentSessionId && (
-        <p className="text-gray-600">معرّف جلسة الدفع: {order.paymentSessionId}</p>
-      )}
-
-      {/* عرض بطاقة الهدية إن وُجدت (على مستوى الطلب) */}
-      {hasGift && (
-        <div className="mt-4 p-3 rounded-md bg-pink-50 border border-pink-200 text-pink-900 text-sm">
-          <h4 className="font-semibold mb-2">بيانات بطاقة الهدية</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
-            {order.giftCard.from && <div><span className="font-medium">من: </span>{order.giftCard.from}</div>}
-            {order.giftCard.to && <div><span className="font-medium">إلى: </span>{order.giftCard.to}</div>}
-            {order.giftCard.phone && <div><span className="font-medium">رقم المستلم: </span>{order.giftCard.phone}</div>}
-            {order.giftCard.note && <div className="md:col-span-2"><span className="font-medium">ملاحظات الهدية: </span>{order.giftCard.note}</div>}
-          </div>
-        </div>
-      )}
-
-      {isDeposit && (
-        <div className="mt-4 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-          تمت عملية <span className="font-semibold">دفع مقدم</span> بقيمة {formatPrice(order.amount)} {currency}.
-          المبلغ المتبقي لإكمال الطلب هو <span className="font-semibold">{formatPrice(remaining)} {currency}</span>.
-        </div>
-      )}
-
+    <section className='section__container rounded p-6'>
       {/* تفاصيل المنتجات */}
-      <div className="mt-8 pt-6">
+      <div className="mt-8 pt-6" dir='rtl'>
         <h3 className="text-xl font-bold mb-4">تفاصيل المنتجات</h3>
         <div className="space-y-6">
           {products.map((product, index) => (
@@ -165,53 +95,21 @@ const PaymentSuccess = () => {
               </div>
               <div className="md:w-3/4">
                 <h4 className="text-lg font-semibold">{product.name}</h4>
-                {product.description && (
-                  <p className="text-gray-600 mt-2">{product.description}</p>
-                )}
-
-                <div className="mt-2">
-                  <span className="font-medium">الفئة: </span>
-                  <span>{product.category || '—'}</span>
-                </div>
-
+                <p className="text-gray-600 mt-2">{product.description}</p>
                 <div className="mt-2">
                   <span className="font-medium">الكمية: </span>
                   <span>{product.quantity}</span>
                 </div>
-
-                {product.selectedSize && (
+                {product.category === 'حناء بودر' && product.selectedSize && (
                   <div className="mt-2">
-                    <span className="font-medium">الحجم/المقاس: </span>
+                    <span className="font-medium">الحجم: </span>
                     <span>{product.selectedSize}</span>
                   </div>
                 )}
-
-                {renderMeasurements(product.measurements)}
-
-                {/* ✅ بطاقة الهدية الخاصة بهذا المنتج (إن وُجدت أو سقطت من الطلب العام) */}
-                {product.giftCard &&
-                  ((product.giftCard.from && String(product.giftCard.from).trim()) ||
-                    (product.giftCard.to && String(product.giftCard.to).trim()) ||
-                    (product.giftCard.phone && String(product.giftCard.phone).trim()) ||
-                    (product.giftCard.note && String(product.giftCard.note).trim())) && (
-                    <div className="mt-3 p-3 rounded-md bg-pink-50 border border-pink-200 text-pink-900 text-sm">
-                      <div className="font-semibold mb-1">بطاقة هدية</div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
-                        {product.giftCard.from && String(product.giftCard.from).trim() && (
-                          <div><span className="font-medium">من: </span>{product.giftCard.from}</div>
-                        )}
-                        {product.giftCard.to && String(product.giftCard.to).trim() && (
-                          <div><span className="font-medium">إلى: </span>{product.giftCard.to}</div>
-                        )}
-                        {product.giftCard.phone && String(product.giftCard.phone).trim() && (
-                          <div><span className="font-medium">رقم المستلم: </span>{product.giftCard.phone}</div>
-                        )}
-                        {product.giftCard.note && String(product.giftCard.note).trim() && (
-                          <div className="md:col-span-2"><span className="font-medium">ملاحظات الهدية: </span>{product.giftCard.note}</div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                <div className="mt-2">
+                  <span className="font-medium">الفئة: </span>
+                  <span>{product.category}</span>
+                </div>
               </div>
             </div>
           ))}
@@ -219,67 +117,21 @@ const PaymentSuccess = () => {
       </div>
 
       {/* ملخص الطلب */}
-      <div className="mt-8 border-t pt-6">
+      <div className="mt-8 border-t pt-6" dir='rtl'>
         <h3 className="text-xl font-bold mb-4">ملخص الطلب</h3>
         <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-          {!isDeposit ? (
-            <>
-              <div className="flex justify-between py-2">
-                <span>السعر:</span>
-                <span className="font-semibold">
-                  {formatPrice(Number(order.amount) - Number(order.shippingFee))} {currency}
-                </span>
-              </div>
+          <div className="flex justify-between py-2">
+            <span>الإجمالي النهائي:</span>
+            <span className="font-bold text-lg">{formatPrice(order.amount)} {currency}</span>
+          </div>
 
-              <div className="flex justify-between py-2">
-                <span>رسوم الشحن:</span>
-                <span className="font-semibold">{formatPrice(order.shippingFee)} {currency}</span>
-              </div>
-
-              <div className="flex justify-between py-2 border-t pt-3">
-                <span className="font-medium">الإجمالي النهائي:</span>
-                <span className="font-bold text-lg">{formatPrice(order.amount)} {currency}</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex justify-between py-2">
-                <span>تم دفع مقدم:</span>
-                <span className="font-semibold">{formatPrice(order.amount)} {currency}</span>
-              </div>
-
-              <div className="flex justify-between py-2">
-                <span>المبلغ المتبقي:</span>
-                <span className="font-semibold">{formatPrice(remaining)} {currency}</span>
-              </div>
-
-              <div className="text-xs text-gray-600">
-                يشمل المبلغ المتبقي قيمة المنتجات بعد الخصومات ورسوم الشحن (إن وُجدت).
-              </div>
-            </>
-          )}
-
-          {/* إظهار بيانات الهدية داخل الملخص أيضًا */}
-          {hasGift && (
-            <div className="rounded-md border  bg-pink-50 p-3 space-y-2">
-              <div className="flex justify-between">
-                <span>نوع الطلب:</span>
-                <span className="font-semibold text-pink-700">هدية 🎁</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                {order.giftCard.from && <div><span className="font-medium">من: </span>{order.giftCard.from}</div>}
-                {order.giftCard.to && <div><span className="font-medium">إلى: </span>{order.giftCard.to}</div>}
-                {order.giftCard.phone && <div><span className="font-medium">رقم المستلم: </span>{order.giftCard.phone}</div>}
-                {order.giftCard.note && (
-                  <div className="md:col-span-2">
-                    <span className="font-medium">ملاحظات الهدية: </span>{order.giftCard.note}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
+          {/* ✅ إظهار البريد الإلكتروني */}
           <div className="flex justify-between py-2 border-t pt-3">
+            <span>البريد الإلكتروني:</span>
+            <span className="font-semibold break-all">{order.email || 'غير متوفر'}</span>
+          </div>
+
+          <div className="flex justify-between py-2">
             <span>حالة الطلب:</span>
             <span className="font-semibold">{order.status}</span>
           </div>
@@ -287,10 +139,6 @@ const PaymentSuccess = () => {
           <div className="flex justify-between py-2">
             <span>اسم العميل:</span>
             <span className="font-semibold">{order.customerName}</span>
-          </div>
-          <div className="flex justify-between py-2">
-            <span>البريد الإلكتروني:</span>
-            <span className="font-semibold">{order.email}</span>
           </div>
 
           <div className="flex justify-between py-2">
