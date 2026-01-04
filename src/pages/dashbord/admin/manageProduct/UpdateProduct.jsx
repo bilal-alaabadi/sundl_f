@@ -1,4 +1,3 @@
-// ========================= src/components/admin/updateProduct/UpdateProduct.jsx =========================
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -8,24 +7,65 @@ import {
 import { useSelector } from 'react-redux';
 import TextInput from '../addProduct/TextInput';
 import SelectInput from '../addProduct/SelectInput';
-// ✅ استخدام نفس كمبوننت الصور الخاص بالكود الأول
 import UploadImage from '../manageProduct/UploadImag';
 
-// الفئات فقط (النوع يعتمد عليها)
 const CATEGORY_OPTIONS = [
   { label: 'أختر منتج', value: '' },
   { label: 'العناية بالبشرة', value: 'العناية بالبشرة' },
   { label: 'العناية بالشعر', value: 'العناية بالشعر' },
   { label: 'العناية بالشفاه', value: 'العناية بالشفاه' },
+  { label: 'المكياج', value: 'المكياج' },
+  { label: 'الشنط', value: 'الشنط' },
+  { label: 'الحنا', value: 'الحنا' },
+  { label: 'الأظافر', value: 'الأظافر' },
+  { label: 'عدسات', value: 'عدسات' },
   { label: 'العطور والبخور', value: 'العطور والبخور' },
   { label: 'إكسسوارات العناية', value: 'إكسسوارات العناية' },
 ];
 
-// نفس خريطة الأنواع من AddProduct
 const SUBCATEGORIES_MAP = {
-  'العناية بالبشرة': ['صوابين', 'مقشرات', 'تونر', 'ماسكات'],
+  'العناية بالبشرة': [
+    'صوابين',
+    'مقشرات',
+    'تونر',
+    'ماسكات',
+    'كريمات الوجه',
+    'كريمات الجسم',
+    'كريمات اليد',
+    'سيرومات',
+  ],
   'العناية بالشعر': ['شامبوهات', 'زيوت', 'أقنعة'],
-  'العناية بالشفاه': ['مرطب', 'محدد', 'مقشر'],
+  'العناية بالشفاه': ['مرطب', 'محدد', 'مقشر', 'لماع'],
+  'المكياج': [
+    'برايمر',
+    'كريم أساس',
+    'بودرة مضغوطة',
+    'لوس بودر',
+    'جلوز',
+    'محدد الشفايف (بني فاتح، بني غامق، الأسود، الأحمر، الوردي الفاتح، الوردي الغامق، البنفسجي)',
+    'لماع',
+    'كونتور',
+    'ظل العيون',
+    'بلاشر',
+    'هايلايت',
+    'قلم الحواجب',
+    'كونسيلير',
+  ],
+  'الشنط': ['ميني', 'أحجام متوسطة', 'أحجام كبيرة'],
+  'الحنا': [
+    'ستيكرات الحنا تاتو',
+    'ستيكرات الحنا عاديه',
+    'حنا بهاونا او مزيونه',
+    'حنا السريع الاحمر او الماروني',
+  ],
+  'الأظافر': [
+    'ادوات الاظافر',
+    'اظافر اكتنشن',
+    'بودره اكريلك',
+    'جل بوليش',
+    'صبغ اظافر',
+  ],
+  'عدسات': [],
   'العطور والبخور': [],
   'إكسسوارات العناية': ['لوفة', 'فرش', 'أدوات'],
 };
@@ -41,8 +81,7 @@ const UpdateProduct = () => {
     error: fetchError,
   } = useFetchProductByIdQuery(id);
 
-  const [updateProduct, { isLoading: isUpdating }] =
-    useUpdateProductMutation();
+  const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
 
   const [product, setProduct] = useState({
     name: '',
@@ -55,16 +94,13 @@ const UpdateProduct = () => {
     stock: '',
   });
 
-  // ✅ نفس نظام الصور في الكود الأول
-  const [newImages, setNewImages] = useState([]);      // ملفات جديدة
-  const [keepImages, setKeepImages] = useState([]);    // الصور التي نبقي عليها
+  const [newImages, setNewImages] = useState([]);
+  const [keepImages, setKeepImages] = useState([]);
 
-  // الأنواع المتاحة بناءً على الفئة
   const availableSubcategories = useMemo(() => {
     return SUBCATEGORIES_MAP[product.category] || [];
   }, [product.category]);
 
-  // تحميل بيانات المنتج في الفورم
   useEffect(() => {
     if (productData) {
       const currentImages = Array.isArray(productData.image)
@@ -78,21 +114,30 @@ const UpdateProduct = () => {
         category: productData.category || '',
         subcategory: productData.subcategory || '',
         price: productData.price != null ? String(productData.price) : '',
-        oldPrice:
-          productData.oldPrice != null ? String(productData.oldPrice) : '',
+        oldPrice: productData.oldPrice != null ? String(productData.oldPrice) : '',
         description: productData.description || '',
         image: currentImages,
-        stock:
-          productData.stock != null ? String(productData.stock) : '',
+        stock: productData.stock != null ? String(productData.stock) : '',
       });
 
-      // ✅ حفظ الصور الحالية في keepImages مثل الكود الأول
       setKeepImages(currentImages);
     }
   }, [productData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    // ✅ عند تغيير الفئة: صفّر النوع إذا ما عاد مناسب
+    if (name === 'category') {
+      const nextSubs = SUBCATEGORIES_MAP[value] || [];
+      setProduct((prev) => ({
+        ...prev,
+        category: value,
+        subcategory: nextSubs.includes(prev.subcategory) ? prev.subcategory : '',
+      }));
+      return;
+    }
+
     setProduct((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -121,10 +166,8 @@ const UpdateProduct = () => {
       formData.append('name', product.name);
       formData.append('category', product.category);
 
-      // النوع اختياري → نرسله فقط لو اختاره المستخدم من القائمة
-      if (availableSubcategories.length > 0 && product.subcategory !== '') {
-        formData.append('subcategory', product.subcategory);
-      }
+      // ✅ أهم تعديل: أرسلي النوع دائمًا (حتى لو فاضي) عشان يتحدّث/ينمسح
+      formData.append('subcategory', product.subcategory || '');
 
       formData.append('price', product.price);
       formData.append('oldPrice', product.oldPrice || '');
@@ -132,10 +175,8 @@ const UpdateProduct = () => {
       formData.append('stock', product.stock || '0');
       formData.append('author', user?._id || '');
 
-      // ✅ استخدام keepImages مثل الكود الأول
       formData.append('keepImages', JSON.stringify(keepImages || []));
 
-      // ✅ الصور الجديدة مثل الكود الأول
       if (Array.isArray(newImages) && newImages.length > 0) {
         newImages.forEach((file) => formData.append('image', file));
       }
@@ -151,12 +192,9 @@ const UpdateProduct = () => {
   };
 
   if (isFetching) return <div className="text-center py-8">جارٍ التحميل...</div>;
-  if (fetchError)
-    return (
-      <div className="text-center py-8 text-red-500">
-        خطأ في تحميل المنتج
-      </div>
-    );
+  if (fetchError) {
+    return <div className="text-center py-8 text-red-500">خطأ في تحميل المنتج</div>;
+  }
 
   return (
     <div className="container mx-auto mt-8 px-4" dir="rtl">
@@ -180,7 +218,6 @@ const UpdateProduct = () => {
           required
         />
 
-        {/* النوع من قائمة جاهزة – اختياري */}
         {availableSubcategories.length > 0 && (
           <SelectInput
             label="النوع (اختياري)"
@@ -189,10 +226,7 @@ const UpdateProduct = () => {
             onChange={handleChange}
             options={[
               { label: 'أختر النوع', value: '' },
-              ...availableSubcategories.map((s) => ({
-                label: s,
-                value: s,
-              })),
+              ...availableSubcategories.map((s) => ({ label: s, value: s })),
             ]}
           />
         )}
@@ -222,7 +256,6 @@ const UpdateProduct = () => {
           onChange={handleChange}
         />
 
-        {/* ✅ نفس نظام الصور في الكود الأول */}
         <UploadImage
           name="image"
           id="image"
