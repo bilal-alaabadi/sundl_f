@@ -102,17 +102,17 @@ fetchAllProducts: builder.query({
 
     // تحديث المنتج
     updateProduct: builder.mutation({
-      query: ({ id, body }) => ({
-        url: `/update-product/${id}`,
-        method: "PATCH",
-        body,
-        credentials: "include",
-      }),
-      invalidatesTags: (result, error, { id }) => [
-        { type: "Product", id },
-        "ProductList",
-      ],
-    }),
+  query: ({ id, body }) => ({
+    url: `/update-product/${id}`,
+    method: "PATCH",
+    body, // FormData
+  }),
+  invalidatesTags: (result, error, { id }) => [
+    { type: "Product", id },
+    "ProductList",
+  ],
+}),
+
 
     // حذف المنتج
     deleteProduct: builder.mutation({

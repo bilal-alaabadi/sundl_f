@@ -122,4 +122,8 @@ const UploadImag = ({ name, id, initialImages = [], setImages, setKeepImages }) 
   );
 };
 
+<<<<<<< HEAD
 export default UploadImag;
+=======
+export default UploadImag;
+>>>>>>> 00db870 (وصف التغييرات هنا)

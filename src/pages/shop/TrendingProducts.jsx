@@ -141,7 +141,7 @@ const TrendingProducts = ({ onProductsLoaded }) => {
       {visibleProducts < products.length && (
         <div className="product__btn text-center mt-8" dir="rtl">
           <button
-            className="hover:bg-[#c19e22] bg-[#e9b86b] text-white px-6 py-2 rounded-md transition-colors"
+            className=" bg-[#894361]  text-white px-6 py-2 rounded-md transition-colors"
             onClick={loadMoreProducts}
           >
             عرض المزيد
