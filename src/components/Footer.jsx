@@ -136,11 +136,9 @@ const Footer = () => {
 
         {/* الحقوق */}
         <div className="border-t border-[#2e3528]/20 pt-4 pb-8 text-center text-sm text-[#4a4a4a]">
-<<<<<<< HEAD
-          جميع الحقوق محفوظة لدى متجر الصندل بيوتي ستور —{" "}
-=======
+
           جميع الحقوق محفوظة لدى الصندل بيوتي ستور  —{" "}
->>>>>>> 00db870 (وصف التغييرات هنا)
+
           <a
             href="https://www.instagram.com/mobadeere/"
             target="_blank"
