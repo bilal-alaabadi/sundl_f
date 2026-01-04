@@ -13,18 +13,63 @@ const CATEGORY_OPTIONS = [
   { label: 'العناية بالبشرة', value: 'العناية بالبشرة' },
   { label: 'العناية بالشعر', value: 'العناية بالشعر' },
   { label: 'العناية بالشفاه', value: 'العناية بالشفاه' },
+  { label: 'المكياج', value: 'المكياج' },
+  { label: 'الشنط', value: 'الشنط' },
+  { label: 'الحنا', value: 'الحنا' },
+  { label: 'الأظافر', value: 'الأظافر' },
+  { label: 'عدسات', value: 'عدسات' },
   { label: 'العطور والبخور', value: 'العطور والبخور' },
   { label: 'إكسسوارات العناية', value: 'إكسسوارات العناية' },
 ];
 
 // خريطة الأنواع لكل فئة
 const SUBCATEGORIES_MAP = {
-  'العناية بالبشرة': ['صوابين', 'مقشرات', 'تونر', 'ماسكات'],
+  'العناية بالبشرة': [
+    'صوابين',
+    'مقشرات',
+    'تونر',
+    'ماسكات',
+    'كريمات الوجه',
+    'كريمات الجسم',
+    'كريمات اليد',
+    'سيرومات',
+  ],
   'العناية بالشعر': ['شامبوهات', 'زيوت', 'أقنعة'],
-  'العناية بالشفاه': ['مرطب', 'محدد', 'مقشر'],
+  'العناية بالشفاه': ['مرطب', 'محدد', 'مقشر', 'لماع'],
+  'المكياج': [
+    'برايمر',
+    'كريم أساس',
+    'بودرة مضغوطة',
+    'لوس بودر',
+    'جلوز',
+    'محدد الشفايف (بني فاتح، بني غامق، الأسود، الأحمر، الوردي الفاتح، الوردي الغامق، البنفسجي)',
+    'لماع',
+    'كونتور',
+    'ظل العيون',
+    'بلاشر',
+    'هايلايت',
+    'قلم الحواجب',
+    'كونسيلير',
+  ],
+  'الشنط': ['ميني', 'أحجام متوسطة', 'أحجام كبيرة'],
+  'الحنا': [
+    'ستيكرات الحنا تاتو',
+    'ستيكرات الحنا عاديه',
+    'حنا بهاونا او مزيونه',
+    'حنا السريع الاحمر او الماروني',
+  ],
+  'الأظافر': [
+    'ادوات الاظافر',
+    'اظافر اكتنشن',
+    'بودره اكريلك',
+    'جل بوليش',
+    'صبغ اظافر',
+  ],
+  'عدسات': [],
   'العطور والبخور': [],
   'إكسسوارات العناية': ['لوفة', 'فرش', 'أدوات'],
 };
+
 
 const AddProduct = () => {
   const { user } = useSelector((state) => state.auth);
@@ -32,11 +77,10 @@ const AddProduct = () => {
   const [product, setProduct] = useState({
     name: '',
     category: '',
-    subcategory: '',   // ✅ النوع
+    subcategory: '',   // ✅ جديد: النوع
     price: '',
     oldPrice: '',
     description: '',
-    stock: '',         // ✅ جديد: الكمية
   });
 
   const [image, setImage] = useState([]);
@@ -57,7 +101,7 @@ const AddProduct = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // التحقق من الحقول المطلوبة (نفس السابق، لم نضف stock كحقل إجباري)
+    // التحقق من الحقول المطلوبة
     const requiredFields = {
       'أسم المنتج': product.name,
       'صنف المنتج': product.category,
@@ -78,7 +122,6 @@ const AddProduct = () => {
     try {
       await AddProductReq({
         ...product,
-        stock: product.stock, // ✅ إرسال الكمية للباك
         image,
         author: user?._id,
       }).unwrap();
@@ -91,7 +134,6 @@ const AddProduct = () => {
         oldPrice: '',
         price: '',
         description: '',
-        stock: '', // ✅ تصفير الكمية بعد الإضافة
       });
       setImage([]);
       navigate('/shop');
@@ -155,22 +197,8 @@ const AddProduct = () => {
           onChange={handleChange}
         />
 
-        {/* ✅ خانة كمية المنتج */}
-        <TextInput
-          label="الكمية في المخزون"
-          name="stock"
-          type="number"
-          placeholder="مثال: 10"
-          value={product.stock}
-          onChange={handleChange}
-        />
+        <UploadImage name="image" id="image" setImage={setImage} />
 
-        <UploadImage
-          name="image"
-          id="image"
-          uploaded={image}
-          setImage={setImage}
-        />
         <div>
           <label
             htmlFor="description"
